@@ -72,3 +72,21 @@ class BCELoss(Module):
         term1 = target * (pred + eps).log()
         term2 = (1 - target) * (1 - pred + eps).log()
         return -(term1 + term2).mean()
+
+
+class CrossEntropyLoss(Module):
+    def forward(self, logits: Tensor, target: Tensor) -> Tensor:
+        batch_size = logits.shape[0]
+
+        max_val = np.max(logits.data, axis=1, keepdims=True)
+        shifted_logits = logits - Tensor(max_val, requires_grad=False)
+
+        log_sum_exp = shifted_logits.exp().sum(axis=1, keepdims=True).log()
+        log_probs = shifted_logits - log_sum_exp
+
+        y_one_hot = np.zeros_like(logits.data)
+        y_one_hot[np.arange(batch_size), target.data.astype(int)] = 1
+
+        selected_log_probs = log_probs * Tensor(y_one_hot, requires_grad=False)
+
+        return -selected_log_probs.sum() / batch_size
